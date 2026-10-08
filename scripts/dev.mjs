@@ -2,20 +2,38 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
+const isWindows = process.platform === "win32";
 const rootDir = process.cwd();
 const faceDir = path.join(rootDir, "services", "face-api");
-const venvPython = path.join(faceDir, ".venv", "bin", "python");
-const pythonCmd = existsSync(venvPython) ? venvPython : "python3";
+const npmCli = process.env.npm_execpath ?? path.join(path.dirname(process.execPath), "node_modules", "npm", "bin", "npm-cli.js");
+const venvPython = isWindows
+  ? path.join(faceDir, ".venv", "Scripts", "python.exe")
+  : path.join(faceDir, ".venv", "bin", "python");
+const pythonCmd = existsSync(venvPython) ? venvPython : (isWindows ? "python" : "python3");
 const faceApiReload = process.env.FACE_API_RELOAD === "true";
 
 const children = [];
 let shuttingDown = false;
 
 function start(name, command, args, cwd) {
-  const child = spawn(command, args, {
-    cwd,
-    stdio: "inherit",
-    env: process.env,
+  const isNpmCommand = isWindows && command === "npm";
+  const child = spawn(
+    isNpmCommand ? process.execPath : command,
+    isNpmCommand ? [npmCli, ...args] : args,
+    {
+      cwd,
+      stdio: "inherit",
+      env: process.env,
+    },
+  );
+
+  child.on("error", (error) => {
+    if (shuttingDown) {
+      return;
+    }
+
+    console.error(`\n[${name}] failed to start: ${error.message}`);
+    shutdown(1);
   });
 
   child.on("exit", (code, signal) => {
