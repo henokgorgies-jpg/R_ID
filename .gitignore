@@ -1,0 +1,18 @@
+# v0 runtime files
+__v0_runtime_loader.js
+__v0_devtools.tsx
+__v0_jsx-dev-runtime.ts
+
+# Common ignores
+node_modules/
+.next/
+.next-fast/
+.next-cache/
+.next-fast.backup-*/
+.env
+.env*.local
+.DS_Store
+/__pycache__/
+*.pyc
+/lib/generated/prisma
+services/face-api/.venv/

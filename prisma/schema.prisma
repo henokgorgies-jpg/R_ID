@@ -1,0 +1,515 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Zone {
+  id         String     @id @db.VarChar(64)
+  code       String     @unique @db.VarChar(8)
+  name       String     @unique @db.VarChar(120)
+  population Int
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  kebeles    Kebele[]
+  residents  Resident[]
+  households Household[]
+  transfersFrom Transfer[] @relation("TransferSourceZone")
+  transfersTo   Transfer[] @relation("TransferDestinationZone")
+  auditLogs  AuditLog[]
+  users      User[]
+  woredas    Woreda[]
+}
+
+model Woreda {
+  id         String     @id @db.VarChar(64)
+  zoneId     String     @db.VarChar(64)
+  code       String     @db.VarChar(8)
+  name       String     @db.VarChar(120)
+  population Int
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  kebeles    Kebele[]
+  residents  Resident[]
+  households Household[]
+  transfersFrom Transfer[] @relation("TransferSourceWoreda")
+  transfersTo   Transfer[] @relation("TransferDestinationWoreda")
+  auditLogs  AuditLog[]
+  users      User[]
+  zone       Zone       @relation(fields: [zoneId], references: [id])
+
+  @@unique([zoneId, code])
+  @@unique([zoneId, name])
+  @@index([zoneId])
+}
+
+model Kebele {
+  id             String     @id @db.VarChar(64)
+  woredaId       String     @db.VarChar(64)
+  zoneId         String     @db.VarChar(64)
+  code           String     @db.VarChar(8)
+  name           String     @db.VarChar(120)
+  population     Int
+  householdCount Int        @default(0)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  woreda         Woreda     @relation(fields: [woredaId], references: [id])
+  zone           Zone       @relation(fields: [zoneId], references: [id])
+  residents      Resident[]
+  households     Household[]
+  transfersFrom Transfer[] @relation("TransferSourceKebele")
+  transfersTo   Transfer[] @relation("TransferDestinationKebele")
+  auditLogs      AuditLog[]
+  users          User[]
+
+  @@unique([woredaId, code])
+  @@unique([woredaId, name])
+  @@index([zoneId])
+  @@index([woredaId])
+}
+
+model User {
+  id            String     @id @db.VarChar(64)
+  email         String     @unique @db.VarChar(190)
+  passwordHash  String     @db.VarChar(255)
+  firstName     String     @db.VarChar(120)
+  lastName      String     @db.VarChar(120)
+  role          UserRole
+  scopeType     ScopeType
+  scopeZoneId   String?    @db.VarChar(64)
+  scopeWoredaId String?    @db.VarChar(64)
+  scopeKebeleId String?    @db.VarChar(64)
+  isActive      Boolean    @default(true)
+  lastLogin     DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  residents     Resident[] @relation("RegisteredResidents")
+  transfersInitiated Transfer[] @relation("TransferInitiatedBy")
+  transfersSourceApproved Transfer[] @relation("TransferSourceApprovedBy")
+  transfersDestinationApproved Transfer[] @relation("TransferDestinationApprovedBy")
+  transfersCompleted Transfer[] @relation("TransferCompletedBy")
+  transfersRejected Transfer[] @relation("TransferRejectedBy")
+  lifeEventsRegistered LifeEvent[] @relation("LifeEventRegisteredBy")
+  lifeEventsVerified LifeEvent[] @relation("LifeEventVerifiedBy")
+  duplicateCasesReviewed DuplicateCase[] @relation("DuplicateReviewedBy")
+  duplicateCasesAssigned DuplicateCase[] @relation("DuplicateAssignedTo")
+  duplicateCasesEscalated DuplicateCase[] @relation("DuplicateEscalatedBy")
+  duplicateCaseStates    DuplicateCaseUserState[]
+  auditLogs      AuditLog[]
+  scopeKebele   Kebele?    @relation(fields: [scopeKebeleId], references: [id])
+  scopeWoreda   Woreda?    @relation(fields: [scopeWoredaId], references: [id])
+  scopeZone     Zone?      @relation(fields: [scopeZoneId], references: [id])
+
+  @@index([scopeType])
+  @@index([scopeZoneId])
+  @@index([scopeWoredaId])
+  @@index([scopeKebeleId])
+}
+
+model AppSetting {
+  key       String   @id @db.VarChar(120)
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Resident {
+  id                String         @id @db.VarChar(64)
+  kebeleId          String         @db.VarChar(64)
+  woredaId          String         @db.VarChar(64)
+  zoneId            String         @db.VarChar(64)
+  firstName         String         @db.VarChar(120)
+  fatherName        String         @db.VarChar(120)
+  grandFatherName   String         @db.VarChar(120)
+  firstNameAm       String?        @db.VarChar(120)
+  fatherNameAm      String?        @db.VarChar(120)
+  grandFatherNameAm String?        @db.VarChar(120)
+  dateOfBirth       DateTime
+  gender            Gender
+  nationality       String         @db.VarChar(80)
+  ethnicity         String?        @db.VarChar(80)
+  religion          String?        @db.VarChar(80)
+  maritalStatus     MaritalStatus
+  occupation        String?        @db.VarChar(120)
+  phoneNumber       String?        @db.VarChar(30)
+  alternatePhone    String?        @db.VarChar(30)
+  email             String?        @db.VarChar(190)
+  address           Json
+  photoUrl          String?
+  faceStatus        FaceStatus     @default(pending)
+  faceError         String?
+  faceUpdatedAt     DateTime?
+  householdId       String?        @db.VarChar(64)
+  householdRole     HouseholdRole?
+  motherName        String?        @db.VarChar(120)
+  fatherResidentId  String?        @db.VarChar(64)
+  motherResidentId  String?        @db.VarChar(64)
+  idNumber          String?        @unique @db.VarChar(40)
+  idIssuedDate      DateTime?
+  idExpiryDate      DateTime?
+  idStatus          IdStatus?
+  status            ResidentStatus
+  registrationDate  DateTime
+  registeredBy      String         @db.VarChar(64)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  deletedAt         DateTime?
+  kebele            Kebele         @relation(fields: [kebeleId], references: [id])
+  household         Household?     @relation(fields: [householdId], references: [id])
+  registeredByUser  User           @relation("RegisteredResidents", fields: [registeredBy], references: [id])
+  woreda            Woreda         @relation(fields: [woredaId], references: [id])
+  zone              Zone           @relation(fields: [zoneId], references: [id])
+  transfers         Transfer[]
+  lifeEvents        LifeEvent[]
+  duplicateCasesA   DuplicateCase[] @relation("DuplicateResident1")
+  duplicateCasesB   DuplicateCase[] @relation("DuplicateResident2")
+  faceEmbedding     ResidentFaceEmbedding?
+
+  @@index([zoneId])
+  @@index([woredaId])
+  @@index([kebeleId])
+  @@index([registeredBy])
+  @@index([status])
+  @@index([firstName, fatherName, grandFatherName])
+}
+
+model ResidentFaceEmbedding {
+  id           String    @id @db.VarChar(64)
+  residentId   String    @unique @db.VarChar(64)
+  embedding    Unsupported("vector(512)")
+  qualityScore Float?
+  faceCount    Int       @default(0)
+  modelVersion String    @db.VarChar(64)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  resident     Resident  @relation(fields: [residentId], references: [id], onDelete: Cascade)
+
+  @@index([residentId])
+}
+
+model Household {
+  id            String   @id @db.VarChar(64)
+  kebeleId      String   @db.VarChar(64)
+  woredaId      String   @db.VarChar(64)
+  zoneId        String   @db.VarChar(64)
+  headResidentId String  @db.VarChar(64)
+  address       Json
+  contactPhone  String?  @db.VarChar(30)
+  memberCount   Int
+  status        HouseholdStatus
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  kebele        Kebele   @relation(fields: [kebeleId], references: [id])
+  woreda        Woreda   @relation(fields: [woredaId], references: [id])
+  zone          Zone     @relation(fields: [zoneId], references: [id])
+  residents     Resident[]
+
+  @@index([zoneId])
+  @@index([woredaId])
+  @@index([kebeleId])
+}
+
+model DuplicateCase {
+  id               String          @id @db.VarChar(64)
+  resident1Id      String          @db.VarChar(64)
+  resident2Id      String          @db.VarChar(64)
+  overallScore     Int
+  scores           Json
+  status           DuplicateStatus
+  priority         DuplicatePriority
+  reviewedBy       String?         @db.VarChar(64)
+  reviewedAt       DateTime?
+  reviewNotes      String?         @db.Text
+  decision         DuplicateDecision?
+  mergedResidentId String?         @db.VarChar(64)
+  mergedAt         DateTime?
+  assignedTo       String?         @db.VarChar(64)
+  assignedAt       DateTime?
+  escalated        Boolean         @default(false)
+  escalatedAt      DateTime?
+  escalatedBy      String?         @db.VarChar(64)
+  detectedAt       DateTime
+  detectionMethod  DetectionMethod
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  resident1        Resident        @relation("DuplicateResident1", fields: [resident1Id], references: [id])
+  resident2        Resident        @relation("DuplicateResident2", fields: [resident2Id], references: [id])
+  reviewer         User?           @relation("DuplicateReviewedBy", fields: [reviewedBy], references: [id])
+  assignee         User?           @relation("DuplicateAssignedTo", fields: [assignedTo], references: [id])
+  escalatedByUser  User?           @relation("DuplicateEscalatedBy", fields: [escalatedBy], references: [id])
+  userStates       DuplicateCaseUserState[]
+
+  @@index([resident1Id])
+  @@index([resident2Id])
+  @@index([status])
+  @@index([priority])
+  @@index([assignedTo])
+  @@index([escalated])
+}
+
+model DuplicateCaseUserState {
+  id              String        @id @db.VarChar(64)
+  duplicateCaseId String        @db.VarChar(64)
+  userId          String        @db.VarChar(64)
+  snoozedUntil    DateTime?
+  snoozedAt       DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  duplicateCase   DuplicateCase @relation(fields: [duplicateCaseId], references: [id], onDelete: Cascade)
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([duplicateCaseId, userId])
+  @@index([userId])
+  @@index([snoozedUntil])
+}
+
+model Transfer {
+  id                      String        @id @db.VarChar(64)
+  residentId              String        @db.VarChar(64)
+  sourceKebeleId          String        @db.VarChar(64)
+  sourceWoredaId          String        @db.VarChar(64)
+  sourceZoneId            String        @db.VarChar(64)
+  destinationKebeleId     String        @db.VarChar(64)
+  destinationWoredaId     String        @db.VarChar(64)
+  destinationZoneId       String        @db.VarChar(64)
+  transferType            TransferType
+  reason                  String        @db.Text
+  status                  TransferStatus
+  initiatedBy             String        @db.VarChar(64)
+  initiatedAt             DateTime
+  sourceApprovedBy        String?       @db.VarChar(64)
+  sourceApprovedAt        DateTime?
+  destinationApprovedBy   String?       @db.VarChar(64)
+  destinationApprovedAt   DateTime?
+  completedBy             String?       @db.VarChar(64)
+  completedAt             DateTime?
+  rejectedBy              String?       @db.VarChar(64)
+  rejectedAt              DateTime?
+  rejectionReason         String?       @db.Text
+  requiresNewId           Boolean       @default(false)
+  newIdNumber             String?       @db.VarChar(40)
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+
+  resident                Resident      @relation(fields: [residentId], references: [id])
+  sourceKebele            Kebele        @relation("TransferSourceKebele", fields: [sourceKebeleId], references: [id])
+  sourceWoreda            Woreda        @relation("TransferSourceWoreda", fields: [sourceWoredaId], references: [id])
+  sourceZone              Zone          @relation("TransferSourceZone", fields: [sourceZoneId], references: [id])
+  destinationKebele       Kebele        @relation("TransferDestinationKebele", fields: [destinationKebeleId], references: [id])
+  destinationWoreda       Woreda        @relation("TransferDestinationWoreda", fields: [destinationWoredaId], references: [id])
+  destinationZone         Zone          @relation("TransferDestinationZone", fields: [destinationZoneId], references: [id])
+  initiatedByUser         User          @relation("TransferInitiatedBy", fields: [initiatedBy], references: [id])
+  sourceApprovedByUser    User?         @relation("TransferSourceApprovedBy", fields: [sourceApprovedBy], references: [id])
+  destinationApprovedByUser User?       @relation("TransferDestinationApprovedBy", fields: [destinationApprovedBy], references: [id])
+  completedByUser         User?         @relation("TransferCompletedBy", fields: [completedBy], references: [id])
+  rejectedByUser          User?         @relation("TransferRejectedBy", fields: [rejectedBy], references: [id])
+
+  @@index([residentId])
+  @@index([status])
+  @@index([sourceKebeleId])
+  @@index([destinationKebeleId])
+}
+
+model LifeEvent {
+  id                String         @id @db.VarChar(64)
+  residentId        String         @db.VarChar(64)
+  eventType         LifeEventType
+  eventDate         DateTime
+  data              Json
+  documentRefs      String[]
+  notes             String?        @db.Text
+  relatedResidentIds String[]
+  registeredBy      String         @db.VarChar(64)
+  registeredAt      DateTime
+  verifiedBy        String?        @db.VarChar(64)
+  verifiedAt        DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  resident          Resident       @relation(fields: [residentId], references: [id])
+  registeredByUser  User           @relation("LifeEventRegisteredBy", fields: [registeredBy], references: [id])
+  verifiedByUser    User?          @relation("LifeEventVerifiedBy", fields: [verifiedBy], references: [id])
+
+  @@index([residentId])
+  @@index([eventType])
+}
+
+model AuditLog {
+  id            String        @id @db.VarChar(64)
+  userId        String        @db.VarChar(64)
+  userEmail     String        @db.VarChar(190)
+  userRole      UserRole
+  action        AuditAction
+  resourceType  ResourceType
+  resourceId    String?       @db.VarChar(64)
+  previousValue Json?
+  newValue      Json?
+  description   String        @db.Text
+  ipAddress     String?       @db.VarChar(64)
+  userAgent     String?       @db.Text
+  kebeleId      String?       @db.VarChar(64)
+  woredaId      String?       @db.VarChar(64)
+  zoneId        String?       @db.VarChar(64)
+  timestamp     DateTime
+
+  user          User          @relation(fields: [userId], references: [id])
+  kebele        Kebele?       @relation(fields: [kebeleId], references: [id])
+  woreda        Woreda?       @relation(fields: [woredaId], references: [id])
+  zone          Zone?         @relation(fields: [zoneId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([timestamp])
+}
+
+enum UserRole {
+  super_admin
+  zone_admin
+  woreda_admin
+  kebele_admin
+  auditor
+  verification_officer
+}
+
+enum ScopeType {
+  city
+  zone
+  woreda
+  kebele
+}
+
+enum ResidentStatus {
+  active
+  inactive
+  deceased
+  transferred_out
+  suspended
+}
+
+enum FaceStatus {
+  pending
+  ready
+  failed
+}
+
+enum Gender {
+  male
+  female
+}
+
+enum MaritalStatus {
+  single
+  married
+  divorced
+  widowed
+  separated
+}
+
+enum IdStatus {
+  pending
+  active
+  expired
+  revoked
+  reissued
+}
+
+enum HouseholdRole {
+  head
+  spouse
+  child
+  relative
+  other
+}
+
+enum HouseholdStatus {
+  active
+  inactive
+  relocated
+}
+
+enum DuplicateStatus {
+  pending_review
+  confirmed_duplicate
+  not_duplicate
+  merged
+  flagged
+}
+
+enum DuplicatePriority {
+  low
+  medium
+  high
+  critical
+}
+
+enum DuplicateDecision {
+  merge
+  keep_both
+  flag_for_audit
+}
+
+enum DetectionMethod {
+  registration
+  batch_scan
+  manual_flag
+}
+
+enum TransferStatus {
+  draft
+  submitted
+  pending_destination
+  approved
+  rejected
+  completed
+  cancelled
+}
+
+enum TransferType {
+  within_woreda
+  cross_woreda
+  cross_zone
+}
+
+enum LifeEventType {
+  birth
+  death
+  marriage
+  divorce
+  address_change
+  name_change
+  status_change
+}
+
+enum AuditAction {
+  create
+  read
+  update
+  delete
+  payment
+  login
+  logout
+  export
+  merge
+  transfer
+  generate_id
+  verify_id
+  approve
+  reject
+}
+
+enum ResourceType {
+  resident
+  household
+  id_card
+  transfer
+  duplicate
+  life_event
+  user
+  system
+}

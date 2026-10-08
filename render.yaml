@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: nextjs-app
+    runtime: node
+    region: oregon
+    plan: free
+    branch: main
+    buildCommand: |
+      corepack enable
+      pnpm install --frozen-lockfile
+      pnpm prisma generate
+      pnpm run build
+    startCommand: pnpm prisma migrate deploy && pnpm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Optional: pin Node to LTS. You can remove this if you want Render defaults.
+      - key: NODE_VERSION
+        value: "20"
+      - key: DATABASE_URL
+        value: postgresql://kebeleid_db_user:ToGjuIEN7cQRMAo2BTVPcmdfJkpyiWVF@dpg-d70g0r6a2pns73b4bomg-a/kebeleid_db
+      - key: SHADOW_DATABASE_URL
+        value: postgresql://kebeleid_db_user:ToGjuIEN7cQRMAo2BTVPcmdfJkpyiWVF@dpg-d70g0r6a2pns73b4bomg-a/kebeleid_db
+
+# Note: No Render-managed database is defined here because free tier allows only
+# one active database. We use the provided DATABASE_URL instead.
